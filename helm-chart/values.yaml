@@ -218,3 +218,19 @@ cartDatabase:
 shoppingAssistantService:
   create: false
   name: shoppingassistantservice
+
+imageGenerationService:
+  create: true
+  name: imagegenerationservice
+  replicas: 2
+  gcsBucket: "online-boutique-images"
+  projectId: "PROJECT_ID"
+  geminiApiKey: "your-gemini-api-key"
+  workloadIdentity: true
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1000m
+      memory: 2Gi

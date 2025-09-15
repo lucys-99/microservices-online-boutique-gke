@@ -46,6 +46,9 @@
                                 <button class="cymbal-button-secondary cart-summary-empty-cart-button" type="submit">
                                     Empty Cart
                                 </button>
+                                <button type="button" class="cymbal-button-accent cart-generate-image-button" onclick="openImageGenerationModal()">
+                                    ✨ Generate Image
+                                </button>
                                 <a class="cymbal-button-primary" href="{{ $.baseUrl }}/" role="button">
                                     Continue Shopping
                                 </a>
@@ -228,6 +231,72 @@
     {{ if $.recommendations }}
         {{ template "recommendations" $ }}
     {{ end }}
+
+    <!-- Image Generation Modal -->
+    <div id="imageGenerationModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Generate Cart Image</h2>
+                <span class="close" onclick="closeImageGenerationModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="image-generation-form">
+                    <div class="form-group">
+                        <label for="stylePreference">Style Preference:</label>
+                        <select id="stylePreference" class="form-control">
+                            <option value="modern">Modern</option>
+                            <option value="vintage">Vintage</option>
+                            <option value="minimalist">Minimalist</option>
+                            <option value="luxury">Luxury</option>
+                            <option value="casual">Casual</option>
+                            <option value="professional">Professional</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="backgroundUpload">Background Image (Optional):</label>
+                        <div class="file-upload-container">
+                            <input type="file" id="backgroundUpload" accept="image/*" onchange="handleBackgroundUpload(event)">
+                            <div class="file-upload-display">
+                                <div id="backgroundPreview" class="background-preview" style="display: none;">
+                                    <img id="backgroundPreviewImg" src="" alt="Background Preview">
+                                    <button type="button" class="remove-background" onclick="removeBackground()">Remove</button>
+                                </div>
+                                <div id="backgroundPlaceholder" class="background-placeholder">
+                                    <span>Click to upload background image</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="cymbal-button-secondary" onclick="closeImageGenerationModal()">Cancel</button>
+                        <button type="button" class="cymbal-button-primary" onclick="generateImage()" id="generateButton">Generate Image</button>
+                    </div>
+                </div>
+                
+                <div id="generationProgress" class="generation-progress" style="display: none;">
+                    <div class="progress-header">
+                        <h3>Generating Image...</h3>
+                        <div class="progress-bar">
+                            <div id="progressBar" class="progress-fill"></div>
+                        </div>
+                        <div id="progressText" class="progress-text">0%</div>
+                    </div>
+                </div>
+                
+                <div id="generatedImageResult" class="generated-image-result" style="display: none;">
+                    <div class="result-header">
+                        <h3>Generated Image</h3>
+                        <button type="button" class="cymbal-button-secondary" onclick="downloadImage()">Download</button>
+                    </div>
+                    <div class="result-image">
+                        <img id="generatedImage" src="" alt="Generated Image">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     {{ template "footer" . }}
 {{ end }}

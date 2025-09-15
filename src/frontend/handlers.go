@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -632,4 +633,175 @@ func stringinSlice(slice []string, val string) bool {
 		}
 	}
 	return false
+}
+
+// Image Generation Handlers
+
+func (fe *frontendServer) generateImageHandler(w http.ResponseWriter, r *http.Request) {
+	log := r.Context().Value(ctxKeyLog{}).(logrus.FieldLogger)
+	
+	type GenerateImageRequest struct {
+		UserID              string `json:"user_id"`
+		StylePreference     string `json:"style_preference"`
+		BackgroundImageURL  string `json:"background_image_url"`
+		CartItems          []struct {
+			ProductID string `json:"product_id"`
+			Quantity  int32  `json:"quantity"`
+		} `json:"cart_items"`
+	}
+	
+	type GenerateImageResponse struct {
+		ImageURL     string `json:"image_url"`
+		GenerationID string `json:"generation_id"`
+		Status       string `json:"status"`
+		ErrorMessage string `json:"error_message"`
+	}
+	
+	var req GenerateImageRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		renderHTTPError(log, r, w, errors.Wrap(err, "failed to decode request"), http.StatusBadRequest)
+		return
+	}
+	
+	// Forward request to image generation service
+	url := "http://" + fe.imageGenerationSvcAddr + "/api/v1/generate-image"
+	reqBody, err := json.Marshal(req)
+	if err != nil {
+		renderHTTPError(log, r, w, errors.Wrap(err, "failed to marshal request"), http.StatusInternalServerError)
+		return
+	}
+	
+	httpReq, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(reqBody))
+	if err != nil {
+		renderHTTPError(log, r, w, errors.Wrap(err, "failed to create request"), http.StatusInternalServerError)
+		return
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Accept", "application/json")
+	
+	res, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		renderHTTPError(log, r, w, errors.Wrap(err, "failed to send request"), http.StatusInternalServerError)
+		return
+	}
+	defer res.Body.Close()
+	
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		renderHTTPError(log, r, w, errors.Wrap(err, "failed to read response"), http.StatusInternalServerError)
+		return
+	}
+	
+	var response GenerateImageResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		renderHTTPError(log, r, w, errors.Wrap(err, "failed to unmarshal response"), http.StatusInternalServerError)
+		return
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func (fe *frontendServer) uploadBackgroundHandler(w http.ResponseWriter, r *http.Request) {
+	log := r.Context().Value(ctxKeyLog{}).(logrus.FieldLogger)
+	
+	type UploadBackgroundRequest struct {
+		ImageData string `json:"image_data"`
+	}
+	
+	type UploadBackgroundResponse struct {
+		ImageURL     string `json:"image_url"`
+		Status       string `json:"status"`
+		ErrorMessage string `json:"error_message"`
+	}
+	
+	var req UploadBackgroundRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		renderHTTPError(log, r, w, errors.Wrap(err, "failed to decode request"), http.StatusBadRequest)
+		return
+	}
+	
+	// Forward request to image generation service
+	url := "http://" + fe.imageGenerationSvcAddr + "/api/v1/upload-background"
+	reqBody, err := json.Marshal(req)
+	if err != nil {
+		renderHTTPError(log, r, w, errors.Wrap(err, "failed to marshal request"), http.StatusInternalServerError)
+		return
+	}
+	
+	httpReq, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(reqBody))
+	if err != nil {
+		renderHTTPError(log, r, w, errors.Wrap(err, "failed to create request"), http.StatusInternalServerError)
+		return
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Accept", "application/json")
+	
+	res, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		renderHTTPError(log, r, w, errors.Wrap(err, "failed to send request"), http.StatusInternalServerError)
+		return
+	}
+	defer res.Body.Close()
+	
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		renderHTTPError(log, r, w, errors.Wrap(err, "failed to read response"), http.StatusInternalServerError)
+		return
+	}
+	
+	var response UploadBackgroundResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		renderHTTPError(log, r, w, errors.Wrap(err, "failed to unmarshal response"), http.StatusInternalServerError)
+		return
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func (fe *frontendServer) getImageStatusHandler(w http.ResponseWriter, r *http.Request) {
+	log := r.Context().Value(ctxKeyLog{}).(logrus.FieldLogger)
+	
+	vars := mux.Vars(r)
+	generationID := vars["id"]
+	
+	type GetStatusResponse struct {
+		Status       string `json:"status"`
+		ImageURL     string `json:"image_url"`
+		Progress     int32  `json:"progress"`
+		ErrorMessage string `json:"error_message"`
+	}
+	
+	// Forward request to image generation service
+	url := "http://" + fe.imageGenerationSvcAddr + "/api/v1/status/" + generationID
+	
+	httpReq, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		renderHTTPError(log, r, w, errors.Wrap(err, "failed to create request"), http.StatusInternalServerError)
+		return
+	}
+	httpReq.Header.Set("Accept", "application/json")
+	
+	res, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		renderHTTPError(log, r, w, errors.Wrap(err, "failed to send request"), http.StatusInternalServerError)
+		return
+	}
+	defer res.Body.Close()
+	
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		renderHTTPError(log, r, w, errors.Wrap(err, "failed to read response"), http.StatusInternalServerError)
+		return
+	}
+	
+	var response GetStatusResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		renderHTTPError(log, r, w, errors.Wrap(err, "failed to unmarshal response"), http.StatusInternalServerError)
+		return
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }

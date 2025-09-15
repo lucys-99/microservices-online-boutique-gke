@@ -1,3 +1,13 @@
+_This is an extension of the original README.md file from the [GoogleCloudPlatform/microservices-demo]_
+
+The project extends the original Online Boutique application by adding an AI-powered image generation feature to the frontend service. This feature allows users to generate custom images based on their shopping cart contents, style preferences, and optional background images.
+
+On the backend, a new microservice called `imagegenerationservice` has been introduced. This service handles requests from the frontend to generate images using AI models. It processes user inputs, interacts with an AI image generation API, and returns the generated images to the frontend.
+
+![Cart Page with Image Generation Modal](/docs/img/cart-image-generation.png)
+![Image Generation Prompt Example](/docs/img/cart-image-prompt.png)
+## Original README.md content below:
+
 <!-- <p align="center">
 <img src="/src/frontend/static/icons/Hipster_HeroLogoMaroon.svg" width="300" alt="Online Boutique" />
 </p> -->

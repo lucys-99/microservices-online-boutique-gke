@@ -1,0 +1,108 @@
+# Copyright 2024 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+{{- if .Values.imageGenerationService.create }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.imageGenerationService.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Values.imageGenerationService.name }}
+spec:
+  replicas: {{ .Values.imageGenerationService.replicas | default 2 }}
+  selector:
+    matchLabels:
+      app: {{ .Values.imageGenerationService.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.imageGenerationService.name }}
+    spec:
+      serviceAccountName: {{ .Values.imageGenerationService.name }}
+      containers:
+      - name: server
+        image: "{{ .Values.images.repository }}/{{ .Values.imageGenerationService.name }}:{{ .Values.images.tag | default .Chart.AppVersion }}"
+        ports:
+        - containerPort: 8080
+        env:
+        - name: PORT
+          value: "8080"
+        - name: CART_SERVICE_ADDR
+          value: "{{ .Values.cartService.name }}:7070"
+        - name: PRODUCT_CATALOG_SERVICE_ADDR
+          value: "{{ .Values.productCatalogService.name }}:3550"
+        - name: GCS_BUCKET
+          value: {{ .Values.imageGenerationService.gcsBucket | quote }}
+        - name: PROJECT_ID
+          value: {{ .Values.imageGenerationService.projectId | quote }}
+        - name: GEMINI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.imageGenerationService.name }}-secrets
+              key: api-key
+        resources:
+          {{- toYaml .Values.imageGenerationService.resources | nindent 10 }}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.imageGenerationService.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Values.imageGenerationService.name }}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ .Values.imageGenerationService.name }}
+  ports:
+  - name: grpc
+    port: 8080
+    targetPort: 8080
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.imageGenerationService.name }}
+  namespace: {{ .Release.Namespace }}
+  {{- with .Values.serviceAccounts.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if .Values.imageGenerationService.workloadIdentity }}
+  annotations:
+    iam.gke.io/gcp-service-account: {{ .Values.imageGenerationService.name }}@{{ .Values.imageGenerationService.projectId }}.iam.gserviceaccount.com
+  {{- end }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.imageGenerationService.name }}-secrets
+  namespace: {{ .Release.Namespace }}
+type: Opaque
+data:
+  api-key: {{ .Values.imageGenerationService.geminiApiKey | b64enc }}
+{{- end }}

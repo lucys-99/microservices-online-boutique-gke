@@ -26,3 +26,8 @@ obj/
 pkg/
 release/wi-kubernetes-manifests.yaml
 vendor/
+.python-version
+.venv/ 
+src/frontend/frontend
+src/frontend/__debug_bin*
+*__pycache__*/

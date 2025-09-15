@@ -13,19 +13,25 @@
 # limitations under the License.
 
 # https://mcr.microsoft.com/product/dotnet/sdk
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:9.0.101-noble@sha256:1f13e67d295e02abdfd187c341f887442bad611eda536766172ced401fc8b9fa AS builder
-ARG TARGETARCH
+FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/sdk:9.0.101-noble@sha256:1f13e67d295e02abdfd187c341f887442bad611eda536766172ced401fc8b9fa AS builder
+ARG TARGETARCH=arm64
 WORKDIR /app
+
+# Copy csproj and restore dependencies first for better layer caching
 COPY cartservice.csproj .
 RUN dotnet restore cartservice.csproj \
-    -a $TARGETARCH
+    -a "$TARGETARCH"
+
+# Copy the rest of the code
 COPY . .
+
+# Build and publish the app
+# Running on amd64 to build for arm64 target
 RUN dotnet publish cartservice.csproj \
     -p:PublishSingleFile=true \
-    -a $TARGETARCH \
+    -a "$TARGETARCH" \
     --self-contained true \
     -p:PublishTrimmed=true \
-    -p:TrimMode=full \
     -c release \
     -o /cartservice
 

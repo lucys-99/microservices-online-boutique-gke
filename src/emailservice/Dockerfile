@@ -12,34 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM --platform=$BUILDPLATFORM python:3.12.8-alpine@sha256:54bec49592c8455de8d5983d984efff76b6417a6af9b5dcc8d0237bf6ad3bd20 AS base
+FROM --platform=$BUILDPLATFORM python:3.12.8-slim AS base
 
 FROM base AS builder
 
-RUN apk update \
-    && apk add --no-cache g++ linux-headers \
-    && rm -rf /var/cache/apk/*
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# get packages
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --upgrade pip setuptools wheel
+# Install with binary preference to avoid compilation issues on ARM
+RUN pip install --prefer-binary -r requirements.txt
 
 FROM base
-# Enable unbuffered logging
 ENV PYTHONUNBUFFERED=1
-# Enable Profiler
 ENV ENABLE_PROFILER=1
 
-RUN apk update \
-    && apk add --no-cache libstdc++ \
-    && rm -rf /var/cache/apk/*
+# No need for extra packages in slim as it already has essential libraries
 
 WORKDIR /email_server
 
-# Grab packages from builder
 COPY --from=builder /usr/local/lib/python3.12/ /usr/local/lib/python3.12/
-
-# Add the application
 COPY . .
 
 EXPOSE 8080
